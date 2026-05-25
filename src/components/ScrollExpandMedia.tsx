@@ -41,24 +41,22 @@ export function ScrollExpandMedia({
   return (
     <section
       ref={sectionRef}
-      className="relative isolate overflow-hidden border-y border-white/15 bg-white/[0.06] px-4 py-24 text-white shadow-lg backdrop-blur-md sm:px-6 sm:py-28"
+      className="relative isolate overflow-hidden border-y border-white/10 bg-transparent px-4 py-24 text-white sm:px-6 sm:py-28"
       style={{
-        background: "rgba(255, 255, 255, 0.06)",
-        backdropFilter: "blur(8px) saturate(140%)",
-        WebkitBackdropFilter: "blur(8px) saturate(140%)",
+        background: "transparent",
       }}
     >
       {canShowPoster ? (
         <img
           src={bgImageSrc}
           alt=""
-          className="pointer-events-none absolute inset-0 -z-20 h-full w-full object-cover opacity-24 blur-2xl scale-110"
+          className="pointer-events-none absolute inset-0 -z-20 h-full w-full scale-105 object-cover opacity-[0.08] blur-sm"
           onError={() => setPosterFailed(true)}
         />
       ) : (
-        <div className="pointer-events-none absolute inset-0 -z-20 bg-[radial-gradient(circle_at_30%_20%,rgba(238,190,237,0.22),transparent_34%),radial-gradient(circle_at_70%_35%,rgba(159,214,255,0.18),transparent_36%)]" />
+        <div className="pointer-events-none absolute inset-0 -z-20 bg-white/[0.03]" />
       )}
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-white/[0.04] backdrop-blur-sm" />
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-white/[0.03] backdrop-blur-sm" />
 
       <div className="mx-auto max-w-[1200px]">
         <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -82,7 +80,7 @@ export function ScrollExpandMedia({
         </div>
 
         <motion.div
-          className="mx-auto overflow-hidden border border-white/14 bg-white/8 shadow-[0_30px_100px_rgba(0,0,0,0.42)] backdrop-blur"
+          className="mx-auto overflow-hidden border border-white/10 bg-white/[0.06] shadow-lg backdrop-blur-sm"
           style={{ scale, borderRadius, opacity }}
         >
           {!mediaFailed ? (

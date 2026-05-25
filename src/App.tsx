@@ -5,6 +5,8 @@ import { RadialScrollGallery } from "@/components/ui/portfolio-and-image-gallery
 import { portfolioContent, projects } from "@/content/portfolio";
 import Waves from "@/components/Waves";
 import { ProjectOneDetail } from "@/components/ProjectOneDetail";
+import { ProjectTwoDetail } from "@/components/ProjectTwoDetail";
+import { ProjectThreeDetail } from "@/components/ProjectThreeDetail";
 
 type Project = (typeof projects)[number];
 
@@ -44,6 +46,14 @@ function App() {
   if (path.startsWith("/projects/")) {
     if (selectedProject?.slug === "project-1") {
       return <ProjectOneDetail project={selectedProject} onBack={() => navigateTo("/")} />;
+    }
+
+    if (selectedProject?.slug === "project-2") {
+      return <ProjectTwoDetail project={selectedProject} onBack={() => navigateTo("/")} />;
+    }
+
+    if (selectedProject?.slug === "project-3") {
+      return <ProjectThreeDetail project={selectedProject} onBack={() => navigateTo("/")} />;
     }
 
     return (
@@ -171,7 +181,7 @@ function App() {
                         {project.category}
                       </Badge>
                       <span
-                        className={`inline-flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition duration-500 ${
+                        className={`inline-flex size-8 items-center justify-center rounded-full bg-[#101820] text-[#E8FF9F] transition duration-500 ${
                           isActive ? "rotate-0 opacity-100" : "-rotate-45 opacity-0"
                         }`}
                       >
@@ -182,7 +192,7 @@ function App() {
                       <h3 className="text-2xl font-black tracking-normal text-foreground">{project.title}</h3>
                       <p className="mt-2 text-sm leading-6 text-muted-foreground">{project.description}</p>
                       <div
-                        className={`mt-3 h-0.5 bg-primary transition-all duration-500 ${
+                        className={`mt-3 h-0.5 bg-[#E8FF9F] transition-all duration-500 ${
                           isActive ? "w-full opacity-100" : "w-0 opacity-0"
                         }`}
                       />

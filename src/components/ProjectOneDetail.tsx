@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { ArrowLeft, ExternalLink } from "lucide-react";
 import { portfolioContent, projects } from "@/content/portfolio";
 import { InteractiveDots } from "@/components/ui/interactive-dots";
+import { PillActionButton } from "@/components/ui/pill-action-button";
 import { ScrollExpandMedia } from "@/components/ScrollExpandMedia";
 
 type Project = (typeof projects)[number];
@@ -31,19 +31,14 @@ export function ProjectOneDetail({ project, onBack }: ProjectOneDetailProps) {
       <div className="pointer-events-none fixed inset-0 z-[1] bg-white/5" aria-hidden="true" />
 
       <main className="relative z-10 min-h-screen">
-        <nav className="sticky top-0 z-50 border-b border-white/10 bg-black/75 backdrop-blur-xl">
-          <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-5">
-            <button type="button" onClick={onBack} className="text-sm font-bold tracking-wide text-white">
+        <nav className="sticky top-0 z-50 border-b border-white/70 bg-white/90 text-gray-700 backdrop-blur-xl">
+          <div className="mx-auto flex h-20 max-w-[1200px] items-center justify-between px-5">
+            <span className="text-sm font-bold tracking-wide text-gray-700">
               {portfolioContent.nav.brand}
-            </button>
-            <button
-              type="button"
-              onClick={onBack}
-              className="inline-flex items-center gap-2 rounded-md border border-white/20 bg-white/10 px-3 py-2 text-sm font-semibold text-white/80 transition hover:-translate-y-0.5 hover:bg-white hover:text-black"
-            >
-              <ArrowLeft size={16} />
+            </span>
+            <PillActionButton onClick={onBack} icon="←" size="sm">
               Back Home
-            </button>
+            </PillActionButton>
           </div>
         </nav>
 
@@ -76,15 +71,14 @@ export function ProjectOneDetail({ project, onBack }: ProjectOneDetailProps) {
 
         {project.projectUrl ? (
           <section className="relative z-10 mx-auto flex max-w-[1200px] flex-col items-center gap-2 px-4 pb-12 text-center">
-            <a
+            <PillActionButton
               href={project.projectUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 rounded-md border border-white/30 bg-white px-5 py-3 text-sm font-semibold text-black transition hover:-translate-y-0.5 hover:bg-white/90"
+              icon="↗"
             >
               访问项目网页
-              <ExternalLink size={16} />
-            </a>
+            </PillActionButton>
             <p className="text-xs font-medium text-white/70">
               当前为本地测试链接，上线后请替换为正式网址。
             </p>
@@ -109,14 +103,9 @@ export function ProjectOneDetail({ project, onBack }: ProjectOneDetailProps) {
         </ScrollExpandMedia>
 
         <footer className="relative z-10 mx-auto flex max-w-[1200px] justify-center px-4 py-12">
-          <button
-            type="button"
-            onClick={onBack}
-            className="inline-flex items-center gap-2 rounded-md border border-white/20 bg-white/90 px-5 py-3 text-sm font-semibold text-black transition hover:-translate-y-0.5 hover:bg-white"
-          >
-            <ArrowLeft size={16} />
+          <PillActionButton onClick={onBack} icon="←">
             Back to Home
-          </button>
+          </PillActionButton>
         </footer>
       </main>
     </div>

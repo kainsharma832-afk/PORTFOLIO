@@ -9,6 +9,7 @@
     "preview": "vite preview --host 127.0.0.1"
   },
   "dependencies": {
+    "@base-ui/react": "^1.5.0",
     "@gsap/react": "latest",
     "@vitejs/plugin-react": "latest",
     "class-variance-authority": "latest",
