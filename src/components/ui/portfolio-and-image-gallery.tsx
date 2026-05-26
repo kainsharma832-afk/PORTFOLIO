@@ -94,6 +94,17 @@ export const RadialScrollGallery = forwardRef<HTMLDivElement, RadialScrollGaller
     const pinRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLUListElement>(null);
     const childRef = useRef<HTMLLIElement>(null);
+    const mobileRotationRef = useRef(0);
+    const mobileFrameRef = useRef<number | null>(null);
+    const suppressClickRef = useRef(false);
+    const dragRef = useRef({
+      pointerId: null as number | null,
+      startX: 0,
+      startY: 0,
+      startRotation: 0,
+      isDragging: false,
+      hasMoved: false,
+    });
 
     const mergedRef = useMergeRefs(ref, pinRef);
 
@@ -112,6 +123,106 @@ export const RadialScrollGallery = forwardRef<HTMLDivElement, RadialScrollGaller
 
     const childrenNodes = useMemo(() => React.Children.toArray(children(hoveredIndex)), [children, hoveredIndex]);
     const childrenCount = childrenNodes.length;
+
+    const isMobileViewport = () => typeof window !== "undefined" && window.innerWidth < 768;
+
+    const applyMobileRotation = (rotation: number) => {
+      mobileRotationRef.current = rotation;
+
+      if (mobileFrameRef.current !== null) return;
+
+      mobileFrameRef.current = window.requestAnimationFrame(() => {
+        mobileFrameRef.current = null;
+        if (containerRef.current) {
+          gsap.set(containerRef.current, { rotation: mobileRotationRef.current });
+        }
+      });
+    };
+
+    const handleMobilePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+      if (disabled || !isMobileViewport()) return;
+
+      suppressClickRef.current = false;
+      dragRef.current = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        startRotation: mobileRotationRef.current,
+        isDragging: false,
+        hasMoved: false,
+      };
+    };
+
+    const handleMobilePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+      const drag = dragRef.current;
+      if (disabled || !isMobileViewport() || drag.pointerId !== event.pointerId) return;
+
+      const deltaX = event.clientX - drag.startX;
+      const deltaY = event.clientY - drag.startY;
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+
+      if (!drag.isDragging) {
+        if (absX < 6 && absY < 6) return;
+        if (absY > absX) return;
+
+        drag.isDragging = true;
+        event.currentTarget.setPointerCapture?.(event.pointerId);
+      }
+
+      if (!drag.isDragging) return;
+
+      event.preventDefault();
+      drag.hasMoved = absX > 10;
+      suppressClickRef.current = drag.hasMoved;
+      applyMobileRotation(drag.startRotation + deltaX * 0.25);
+    };
+
+    const endMobileDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+      const drag = dragRef.current;
+      if (drag.pointerId !== event.pointerId) return;
+
+      if (drag.isDragging && containerRef.current && childrenCount > 0) {
+        const angleStep = 360 / childrenCount;
+        const targetRotation = Math.round(mobileRotationRef.current / angleStep) * angleStep;
+        mobileRotationRef.current = targetRotation;
+
+        gsap.to(containerRef.current, {
+          rotation: targetRotation,
+          duration: 0.28,
+          ease: "power2.out",
+        });
+      }
+
+      if (drag.hasMoved) {
+        suppressClickRef.current = true;
+        window.setTimeout(() => {
+          suppressClickRef.current = false;
+        }, 200);
+      }
+
+      if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+
+      dragRef.current = {
+        pointerId: null,
+        startX: 0,
+        startY: 0,
+        startRotation: mobileRotationRef.current,
+        isDragging: false,
+        hasMoved: false,
+      };
+    };
+
+    const handleItemSelect = (index: number) => {
+      if (suppressClickRef.current) {
+        suppressClickRef.current = false;
+        return;
+      }
+
+      onItemSelect?.(index);
+    };
 
     useEffect(() => {
       setIsMounted(true);
@@ -135,6 +246,14 @@ export const RadialScrollGallery = forwardRef<HTMLDivElement, RadialScrollGaller
       observer.observe(childRef.current);
       return () => observer.disconnect();
     }, [childrenCount]);
+
+    useEffect(() => {
+      return () => {
+        if (mobileFrameRef.current !== null) {
+          window.cancelAnimationFrame(mobileFrameRef.current);
+        }
+      };
+    }, []);
 
     useGSAP(
       () => {
@@ -182,17 +301,8 @@ export const RadialScrollGallery = forwardRef<HTMLDivElement, RadialScrollGaller
           mm.add("(max-width: 767px)", () => {
             if (!pinRef.current || !containerRef.current) return;
 
-            gsap.to(containerRef.current, {
-              rotation: 160,
-              ease: "none",
-              scrollTrigger: {
-                trigger: pinRef.current,
-                pin: false,
-                start: "top bottom",
-                end: "bottom top",
-                scrub: 0.8,
-                invalidateOnRefresh: true,
-              },
+            gsap.set(containerRef.current, {
+              rotation: mobileRotationRef.current,
             });
           });
 
@@ -226,6 +336,10 @@ export const RadialScrollGallery = forwardRef<HTMLDivElement, RadialScrollGaller
       >
         <div
           className="relative w-full touch-pan-y overflow-hidden"
+          onPointerDown={handleMobilePointerDown}
+          onPointerMove={handleMobilePointerMove}
+          onPointerUp={endMobileDrag}
+          onPointerCancel={endMobileDrag}
           style={{
             height: `${visibleAreaHeight}px`,
             maskImage: "linear-gradient(to top, transparent 0%, black 40%, black 100%)",
@@ -276,7 +390,7 @@ export const RadialScrollGallery = forwardRef<HTMLDivElement, RadialScrollGaller
                   <div
                     role="button"
                     tabIndex={disabled ? -1 : 0}
-                    onClick={() => !disabled && onItemSelect?.(index)}
+                    onClick={() => !disabled && handleItemSelect(index)}
                     onKeyDown={(e) => {
                       if (disabled) return;
                       if (e.key === "Enter" || e.key === " ") {
