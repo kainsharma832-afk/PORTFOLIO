@@ -2,7 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const SpotlightBackground = () => {
+type SpotlightBackgroundProps = {
+  color?: string;
+};
+
+const SpotlightBackground = ({
+  color = "rgba(56,189,248,0.7)",
+}: SpotlightBackgroundProps) => {
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
   const [isMoving, setIsMoving] = useState(false);
   const moveTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -41,8 +47,7 @@ const SpotlightBackground = () => {
           width: isMoving ? "220px" : "280px",
           height: isMoving ? "220px" : "280px",
           transform: "translate(-50%, -50%)",
-          background:
-            "radial-gradient(circle, rgba(56,189,248,0.7) 0%, transparent 70%)",
+          background: `radial-gradient(circle, ${color} 0%, transparent 70%)`,
         }}
       />
     </div>

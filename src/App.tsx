@@ -7,6 +7,7 @@ import Waves from "@/components/Waves";
 import { ProjectOneDetail } from "@/components/ProjectOneDetail";
 import { ProjectTwoDetail } from "@/components/ProjectTwoDetail";
 import { ProjectThreeDetail } from "@/components/ProjectThreeDetail";
+import { ProjectFourDetail } from "@/components/ProjectFourDetail";
 
 type Project = (typeof projects)[number];
 
@@ -54,6 +55,10 @@ function App() {
 
     if (selectedProject?.slug === "project-3") {
       return <ProjectThreeDetail project={selectedProject} onBack={() => navigateTo("/")} />;
+    }
+
+    if (selectedProject?.slug === "project-4") {
+      return <ProjectFourDetail project={selectedProject} onBack={() => navigateTo("/")} />;
     }
 
     return (
@@ -167,13 +172,17 @@ function App() {
                   key={project.id}
                   className="group relative h-[300px] w-[210px] overflow-hidden rounded-md border border-border bg-card shadow-2xl shadow-black/15 sm:h-[340px] sm:w-[260px]"
                 >
-                  <img
-                    src={project.cover}
-                    alt={project.title}
-                    className={`h-full w-full object-cover transition duration-700 ease-out ${
-                      isActive ? "scale-110 blur-0" : "scale-100 blur-[1px] grayscale-[30%]"
-                    }`}
-                  />
+                  {project.cover ? (
+                    <img
+                      src={project.cover}
+                      alt={project.title}
+                      className={`h-full w-full object-cover transition duration-700 ease-out ${
+                        isActive ? "scale-110 blur-0" : "scale-100 blur-[1px] grayscale-[30%]"
+                      }`}
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-[radial-gradient(circle_at_30%_20%,rgba(232,255,159,0.26),transparent_32%),linear-gradient(135deg,rgba(255,255,255,0.92),rgba(214,220,220,0.74))]" />
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/20 to-transparent" />
                   <div className="absolute inset-0 flex flex-col justify-between p-4">
                     <div className="flex items-start justify-between gap-3">
@@ -190,7 +199,9 @@ function App() {
                     </div>
                     <div className={`transition duration-500 ${isActive ? "translate-y-0" : "translate-y-3"}`}>
                       <h3 className="text-2xl font-black tracking-normal text-foreground">{project.title}</h3>
-                      <p className="mt-2 text-sm leading-6 text-muted-foreground">{project.description}</p>
+                      {project.description ? (
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">{project.description}</p>
+                      ) : null}
                       <div
                         className={`mt-3 h-0.5 bg-[#E8FF9F] transition-all duration-500 ${
                           isActive ? "w-full opacity-100" : "w-0 opacity-0"

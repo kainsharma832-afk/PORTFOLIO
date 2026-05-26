@@ -17,6 +17,7 @@
     "framer-motion": "^12.40.0",
     "gsap": "latest",
     "lucide-react": "latest",
+    "ogl": "^1.0.11",
     "react": "latest",
     "react-dom": "latest",
     "tailwind-merge": "latest",

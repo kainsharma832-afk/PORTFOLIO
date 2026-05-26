@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { portfolioContent, projects } from "@/content/portfolio";
+import SpotlightBackground from "@/components/SpotlightBackground";
 import { PillActionButton } from "@/components/ui/pill-action-button";
 
 type Project = (typeof projects)[number];
@@ -10,12 +11,16 @@ type ProjectThreeDetailProps = {
 };
 
 const fullPageImage = "/images/projects/project-3/full-page.png";
+const spotlightColor = "rgba(232, 255, 159, 0.75)";
 
 export function ProjectThreeDetail({ project, onBack }: ProjectThreeDetailProps) {
   const [imageFailed, setImageFailed] = useState(false);
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-slate-50 text-white">
+      <SpotlightBackground color={spotlightColor} />
+      <div className="pointer-events-none fixed inset-0 z-[1] bg-white/10" aria-hidden="true" />
+
       <main className="relative z-10 min-h-screen">
         <nav className="sticky top-0 z-50 border-b border-white/70 bg-white/90 text-gray-700 backdrop-blur-xl">
           <div className="mx-auto flex h-20 max-w-[1200px] items-center justify-between px-5">
