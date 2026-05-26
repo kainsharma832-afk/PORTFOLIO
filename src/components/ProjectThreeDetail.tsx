@@ -11,6 +11,8 @@ type ProjectThreeDetailProps = {
 };
 
 const fullPageImage = "/images/projects/project-3/full-page.png";
+const fullPageImageError =
+  "图片加载失败，请检查 public/images/projects/project-3/full-page.png 是否存在。";
 const spotlightColor = "rgba(232, 255, 159, 0.75)";
 
 export function ProjectThreeDetail({ project, onBack }: ProjectThreeDetailProps) {
@@ -52,14 +54,19 @@ export function ProjectThreeDetail({ project, onBack }: ProjectThreeDetailProps)
             <img
               src={fullPageImage}
               alt={`${project.title} full page`}
-              className="mx-auto h-auto w-full max-w-[1200px] object-contain"
+              loading="lazy"
+              decoding="async"
+              className="mx-auto h-auto w-full max-w-6xl object-contain"
               draggable={false}
-              onError={() => setImageFailed(true)}
+              onError={() => {
+                console.warn(fullPageImageError);
+                setImageFailed(true);
+              }}
             />
           ) : (
             <div className="mx-auto flex min-h-[60vh] max-w-[1200px] items-center justify-center rounded-md border border-dashed border-white/25 bg-white/70 p-8 text-center backdrop-blur">
               <p className="text-base leading-8 text-slate-700">
-                请将 full-page.png 放到 public/images/projects/project-3/
+                {fullPageImageError}
               </p>
             </div>
           )}

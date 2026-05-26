@@ -31,6 +31,8 @@ export function InteractiveDots({
   className = "",
 }: InteractiveDotsProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const pointerRef = useRef<{ x: number; y: number } | null>(null);
+  const frameRef = useRef<number | null>(null);
   const [size, setSize] = useState<Size>({ width: 0, height: 0 });
   const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null);
 
@@ -48,12 +50,25 @@ export function InteractiveDots({
   }, []);
 
   useEffect(() => {
+    const commitPointer = () => {
+      setMouse(pointerRef.current);
+      frameRef.current = null;
+    };
+
+    const schedulePointerUpdate = () => {
+      if (frameRef.current === null) {
+        frameRef.current = window.requestAnimationFrame(commitPointer);
+      }
+    };
+
     const handlePointerMove = (event: PointerEvent) => {
-      setMouse({ x: event.clientX, y: event.clientY });
+      pointerRef.current = { x: event.clientX, y: event.clientY };
+      schedulePointerUpdate();
     };
 
     const handlePointerLeave = () => {
-      setMouse(null);
+      pointerRef.current = null;
+      schedulePointerUpdate();
     };
 
     window.addEventListener("pointermove", handlePointerMove);
@@ -61,6 +76,9 @@ export function InteractiveDots({
     return () => {
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerleave", handlePointerLeave);
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current);
+      }
     };
   }, []);
 
@@ -89,7 +107,7 @@ export function InteractiveDots({
   return (
     <div
       ref={containerRef}
-      className={`fixed inset-0 z-0 h-screen min-h-screen w-screen overflow-hidden bg-white ${className}`}
+      className={`pointer-events-none fixed inset-0 z-0 h-screen min-h-screen w-screen overflow-hidden bg-white ${className}`}
       data-interactive-dots="true"
       aria-hidden="true"
     >

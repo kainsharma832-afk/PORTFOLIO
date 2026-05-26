@@ -86,6 +86,7 @@ export const RadialScrollGallery = forwardRef<HTMLDivElement, RadialScrollGaller
       onItemSelect,
       direction = "ltr",
       disabled = false,
+      style,
       ...rest
     },
     ref,
@@ -142,6 +143,8 @@ export const RadialScrollGallery = forwardRef<HTMLDivElement, RadialScrollGaller
         const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
         if (!prefersReducedMotion) {
+          const mm = gsap.matchMedia();
+
           gsap.fromTo(
             containerRef.current.children,
             { scale: 0, autoAlpha: 0 },
@@ -159,18 +162,41 @@ export const RadialScrollGallery = forwardRef<HTMLDivElement, RadialScrollGaller
             },
           );
 
-          gsap.to(containerRef.current, {
-            rotation: 360,
-            ease: "none",
-            scrollTrigger: {
-              trigger: pinRef.current,
-              pin: true,
-              start: startTrigger,
-              end: `+=${scrollDuration}`,
-              scrub: 1,
-              invalidateOnRefresh: true,
-            },
+          mm.add("(min-width: 768px)", () => {
+            if (!pinRef.current || !containerRef.current) return;
+
+            gsap.to(containerRef.current, {
+              rotation: 360,
+              ease: "none",
+              scrollTrigger: {
+                trigger: pinRef.current,
+                pin: true,
+                start: startTrigger,
+                end: `+=${scrollDuration}`,
+                scrub: 1,
+                invalidateOnRefresh: true,
+              },
+            });
           });
+
+          mm.add("(max-width: 767px)", () => {
+            if (!pinRef.current || !containerRef.current) return;
+
+            gsap.to(containerRef.current, {
+              rotation: 160,
+              ease: "none",
+              scrollTrigger: {
+                trigger: pinRef.current,
+                pin: false,
+                start: "top bottom",
+                end: "bottom top",
+                scrub: 0.8,
+                invalidateOnRefresh: true,
+              },
+            });
+          });
+
+          return () => mm.revert();
         }
       },
       {
@@ -191,11 +217,15 @@ export const RadialScrollGallery = forwardRef<HTMLDivElement, RadialScrollGaller
     return (
       <div
         ref={mergedRef}
-        className={`relative flex min-h-screen w-full items-center justify-center overflow-hidden ${className}`}
+        className={`relative flex min-h-screen w-full touch-pan-y items-center justify-center overflow-hidden ${className}`}
         {...rest}
+        style={{
+          WebkitOverflowScrolling: "touch",
+          ...style,
+        }}
       >
         <div
-          className="relative w-full overflow-hidden"
+          className="relative w-full touch-pan-y overflow-hidden"
           style={{
             height: `${visibleAreaHeight}px`,
             maskImage: "linear-gradient(to top, transparent 0%, black 40%, black 100%)",
@@ -207,6 +237,7 @@ export const RadialScrollGallery = forwardRef<HTMLDivElement, RadialScrollGaller
             className={`
               absolute left-1/2 m-0 -translate-x-1/2 list-none p-0 will-change-transform
               transition-opacity duration-500 ease-out
+              touch-pan-y
               ${disabled ? "pointer-events-none opacity-50 grayscale" : ""}
               ${isMounted ? "opacity-100" : "opacity-0"}
             `}
@@ -259,6 +290,7 @@ export const RadialScrollGallery = forwardRef<HTMLDivElement, RadialScrollGaller
                     onBlur={() => !disabled && setHoveredIndex(null)}
                     className={`
                       block cursor-pointer rounded-xl text-left outline-none will-change-transform
+                      touch-pan-y
                       transition-all duration-500 ease-out
                       focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
                       ${isHovered ? "-translate-y-8 scale-125" : "scale-100"}

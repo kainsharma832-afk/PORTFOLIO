@@ -1,15 +1,40 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { ArrowDown, ArrowLeft, ArrowUpRight, Code2, Mail, MapPin, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { RadialScrollGallery } from "@/components/ui/portfolio-and-image-gallery";
 import { portfolioContent, projects } from "@/content/portfolio";
 import Waves from "@/components/Waves";
-import { ProjectOneDetail } from "@/components/ProjectOneDetail";
-import { ProjectTwoDetail } from "@/components/ProjectTwoDetail";
-import { ProjectThreeDetail } from "@/components/ProjectThreeDetail";
-import { ProjectFourDetail } from "@/components/ProjectFourDetail";
 
 type Project = (typeof projects)[number];
+
+const ProjectOneDetail = lazy(() =>
+  import("@/components/ProjectOneDetail").then((module) => ({
+    default: module.ProjectOneDetail,
+  }))
+);
+const ProjectTwoDetail = lazy(() =>
+  import("@/components/ProjectTwoDetail").then((module) => ({
+    default: module.ProjectTwoDetail,
+  }))
+);
+const ProjectThreeDetail = lazy(() =>
+  import("@/components/ProjectThreeDetail").then((module) => ({
+    default: module.ProjectThreeDetail,
+  }))
+);
+const ProjectFourDetail = lazy(() =>
+  import("@/components/ProjectFourDetail").then((module) => ({
+    default: module.ProjectFourDetail,
+  }))
+);
+
+function RouteFallback() {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-background text-sm font-semibold text-muted-foreground">
+      Loading project...
+    </main>
+  );
+}
 
 function App() {
   const [path, setPath] = useState(() => window.location.pathname);
@@ -46,19 +71,35 @@ function App() {
 
   if (path.startsWith("/projects/")) {
     if (selectedProject?.slug === "project-1") {
-      return <ProjectOneDetail project={selectedProject} onBack={() => navigateTo("/")} />;
+      return (
+        <Suspense fallback={<RouteFallback />}>
+          <ProjectOneDetail project={selectedProject} onBack={() => navigateTo("/")} />
+        </Suspense>
+      );
     }
 
     if (selectedProject?.slug === "project-2") {
-      return <ProjectTwoDetail project={selectedProject} onBack={() => navigateTo("/")} />;
+      return (
+        <Suspense fallback={<RouteFallback />}>
+          <ProjectTwoDetail project={selectedProject} onBack={() => navigateTo("/")} />
+        </Suspense>
+      );
     }
 
     if (selectedProject?.slug === "project-3") {
-      return <ProjectThreeDetail project={selectedProject} onBack={() => navigateTo("/")} />;
+      return (
+        <Suspense fallback={<RouteFallback />}>
+          <ProjectThreeDetail project={selectedProject} onBack={() => navigateTo("/")} />
+        </Suspense>
+      );
     }
 
     if (selectedProject?.slug === "project-4") {
-      return <ProjectFourDetail project={selectedProject} onBack={() => navigateTo("/")} />;
+      return (
+        <Suspense fallback={<RouteFallback />}>
+          <ProjectFourDetail project={selectedProject} onBack={() => navigateTo("/")} />
+        </Suspense>
+      );
     }
 
     return (
@@ -176,6 +217,8 @@ function App() {
                     <img
                       src={project.cover}
                       alt={project.title}
+                      loading="lazy"
+                      decoding="async"
                       className={`h-full w-full object-cover transition duration-700 ease-out ${
                         isActive ? "scale-110 blur-0" : "scale-100 blur-[1px] grayscale-[30%]"
                       }`}

@@ -50,6 +50,8 @@ export function ScrollExpandMedia({
         <img
           src={bgImageSrc}
           alt=""
+          loading="lazy"
+          decoding="async"
           className="pointer-events-none absolute inset-0 -z-20 h-full w-full scale-105 object-cover opacity-[0.08] blur-sm"
           onError={() => setPosterFailed(true)}
         />
