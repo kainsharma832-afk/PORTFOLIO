@@ -18,6 +18,11 @@ if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
 }
 
+const SWIPE_THRESHOLD = 35;
+const VERTICAL_CANCEL_RATIO = 1.2;
+const CLICK_CANCEL_THRESHOLD = 10;
+const MOBILE_SWIPE_DURATION = 0.42;
+
 function useMergeRefs<T>(...refs: (Ref<T> | undefined)[]) {
   return useMemo(() => {
     if (refs.every((ref) => ref == null)) return null;
@@ -92,19 +97,18 @@ export const RadialScrollGallery = forwardRef<HTMLDivElement, RadialScrollGaller
     ref,
   ) => {
     const pinRef = useRef<HTMLDivElement>(null);
-    const containerRef = useRef<HTMLUListElement>(null);
+    const wheelRef = useRef<HTMLUListElement>(null);
     const childRef = useRef<HTMLLIElement>(null);
+    const touchStartXRef = useRef(0);
+    const touchStartYRef = useRef(0);
+    const isSwipingRef = useRef(false);
+    const hasSwipeMovedRef = useRef(false);
+    const swipePointerIdRef = useRef<number | null>(null);
+    const mobileActiveIndexRef = useRef(0);
+    const mobileStepRef = useRef(0);
     const mobileRotationRef = useRef(0);
-    const mobileFrameRef = useRef<number | null>(null);
+    const isAnimatingRef = useRef(false);
     const suppressClickRef = useRef(false);
-    const dragRef = useRef({
-      pointerId: null as number | null,
-      startX: 0,
-      startY: 0,
-      startRotation: 0,
-      isDragging: false,
-      hasMoved: false,
-    });
 
     const mergedRef = useMergeRefs(ref, pinRef);
 
@@ -123,78 +127,97 @@ export const RadialScrollGallery = forwardRef<HTMLDivElement, RadialScrollGaller
 
     const childrenNodes = useMemo(() => React.Children.toArray(children(hoveredIndex)), [children, hoveredIndex]);
     const childrenCount = childrenNodes.length;
+    const initialRotation = useMemo(
+      () => (childrenCount > 1 ? -(360 / childrenCount) * 2 : 0),
+      [childrenCount],
+    );
 
     const isMobileViewport = () => typeof window !== "undefined" && window.innerWidth < 768;
 
-    const applyMobileRotation = (rotation: number) => {
-      mobileRotationRef.current = rotation;
+    const resetMobileSwipe = () => {
+      isSwipingRef.current = false;
+      hasSwipeMovedRef.current = false;
+      swipePointerIdRef.current = null;
+    };
 
-      if (mobileFrameRef.current !== null) return;
+    const goToMobileIndex = (direction: "next" | "prev") => {
+      if (isAnimatingRef.current || !wheelRef.current || childrenCount === 0) return;
 
-      mobileFrameRef.current = window.requestAnimationFrame(() => {
-        mobileFrameRef.current = null;
-        if (containerRef.current) {
-          gsap.set(containerRef.current, { rotation: mobileRotationRef.current });
-        }
+      const angleStep = 360 / childrenCount;
+      const directionStep = direction === "next" ? 1 : -1;
+      const nextStep = mobileStepRef.current + directionStep;
+      const nextIndex = ((nextStep % childrenCount) + childrenCount) % childrenCount;
+      const targetRotation = initialRotation - nextStep * angleStep;
+
+      isAnimatingRef.current = true;
+      mobileStepRef.current = nextStep;
+      mobileActiveIndexRef.current = nextIndex;
+      mobileRotationRef.current = targetRotation;
+      suppressClickRef.current = true;
+
+      gsap.to(wheelRef.current, {
+        rotation: targetRotation,
+        duration: MOBILE_SWIPE_DURATION,
+        ease: "power2.out",
+        overwrite: true,
+        onComplete: () => {
+          isAnimatingRef.current = false;
+        },
+        onInterrupt: () => {
+          isAnimatingRef.current = false;
+        },
       });
     };
 
     const handleMobilePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
       if (disabled || !isMobileViewport()) return;
+      if (isAnimatingRef.current) return;
+
+      if (wheelRef.current) {
+        gsap.killTweensOf(wheelRef.current);
+      }
 
       suppressClickRef.current = false;
-      dragRef.current = {
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        startRotation: mobileRotationRef.current,
-        isDragging: false,
-        hasMoved: false,
-      };
+      touchStartXRef.current = event.clientX;
+      touchStartYRef.current = event.clientY;
+      isSwipingRef.current = true;
+      hasSwipeMovedRef.current = false;
+      swipePointerIdRef.current = event.pointerId;
     };
 
     const handleMobilePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-      const drag = dragRef.current;
-      if (disabled || !isMobileViewport() || drag.pointerId !== event.pointerId) return;
+      if (isAnimatingRef.current) return;
+      if (disabled || !isMobileViewport() || !isSwipingRef.current || swipePointerIdRef.current !== event.pointerId) {
+        return;
+      }
 
-      const deltaX = event.clientX - drag.startX;
-      const deltaY = event.clientY - drag.startY;
+      const deltaX = event.clientX - touchStartXRef.current;
+      const deltaY = event.clientY - touchStartYRef.current;
       const absX = Math.abs(deltaX);
       const absY = Math.abs(deltaY);
 
-      if (!drag.isDragging) {
-        if (absX < 6 && absY < 6) return;
-        if (absY > absX) return;
+      hasSwipeMovedRef.current = absX > CLICK_CANCEL_THRESHOLD;
+      suppressClickRef.current = hasSwipeMovedRef.current;
 
-        drag.isDragging = true;
+      if (absX > CLICK_CANCEL_THRESHOLD && absX > absY * VERTICAL_CANCEL_RATIO) {
         event.currentTarget.setPointerCapture?.(event.pointerId);
       }
-
-      if (!drag.isDragging) return;
-
-      event.preventDefault();
-      drag.hasMoved = absX > 10;
-      suppressClickRef.current = drag.hasMoved;
-      applyMobileRotation(drag.startRotation + deltaX * 0.25);
     };
 
     const endMobileDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-      const drag = dragRef.current;
-      if (drag.pointerId !== event.pointerId) return;
+      if (swipePointerIdRef.current !== event.pointerId) return;
 
-      if (drag.isDragging && containerRef.current && childrenCount > 0) {
-        const angleStep = 360 / childrenCount;
-        const targetRotation = Math.round(mobileRotationRef.current / angleStep) * angleStep;
-        mobileRotationRef.current = targetRotation;
+      const deltaX = event.clientX - touchStartXRef.current;
+      const deltaY = event.clientY - touchStartYRef.current;
+      const absX = Math.abs(deltaX);
+      const absY = Math.abs(deltaY);
+      const isHorizontalSwipe = absX > SWIPE_THRESHOLD && absX > absY * VERTICAL_CANCEL_RATIO;
 
-        gsap.to(containerRef.current, {
-          rotation: targetRotation,
-          duration: 0.28,
-          ease: "power2.out",
-        });
+      if (isHorizontalSwipe) {
+        goToMobileIndex(deltaX > 0 ? "next" : "prev");
       }
 
-      if (drag.hasMoved) {
+      if (hasSwipeMovedRef.current || isHorizontalSwipe) {
         suppressClickRef.current = true;
         window.setTimeout(() => {
           suppressClickRef.current = false;
@@ -205,14 +228,17 @@ export const RadialScrollGallery = forwardRef<HTMLDivElement, RadialScrollGaller
         event.currentTarget.releasePointerCapture(event.pointerId);
       }
 
-      dragRef.current = {
-        pointerId: null,
-        startX: 0,
-        startY: 0,
-        startRotation: mobileRotationRef.current,
-        isDragging: false,
-        hasMoved: false,
-      };
+      resetMobileSwipe();
+    };
+
+    const cancelMobileDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+      if (swipePointerIdRef.current !== event.pointerId) return;
+
+      if (event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+
+      resetMobileSwipe();
     };
 
     const handleItemSelect = (index: number) => {
@@ -226,6 +252,11 @@ export const RadialScrollGallery = forwardRef<HTMLDivElement, RadialScrollGaller
 
     useEffect(() => {
       setIsMounted(true);
+      mobileActiveIndexRef.current = 0;
+      mobileStepRef.current = 0;
+      mobileRotationRef.current = initialRotation;
+      isAnimatingRef.current = false;
+      resetMobileSwipe();
 
       if (!childRef.current) return;
 
@@ -245,19 +276,11 @@ export const RadialScrollGallery = forwardRef<HTMLDivElement, RadialScrollGaller
 
       observer.observe(childRef.current);
       return () => observer.disconnect();
-    }, [childrenCount]);
-
-    useEffect(() => {
-      return () => {
-        if (mobileFrameRef.current !== null) {
-          window.cancelAnimationFrame(mobileFrameRef.current);
-        }
-      };
-    }, []);
+    }, [childrenCount, initialRotation]);
 
     useGSAP(
       () => {
-        if (!pinRef.current || !containerRef.current || childrenCount === 0) return;
+        if (!pinRef.current || !wheelRef.current || childrenCount === 0) return;
 
         const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -265,7 +288,7 @@ export const RadialScrollGallery = forwardRef<HTMLDivElement, RadialScrollGaller
           const mm = gsap.matchMedia();
 
           gsap.fromTo(
-            containerRef.current.children,
+            wheelRef.current.children,
             { scale: 0, autoAlpha: 0 },
             {
               scale: 1,
@@ -282,27 +305,32 @@ export const RadialScrollGallery = forwardRef<HTMLDivElement, RadialScrollGaller
           );
 
           mm.add("(min-width: 768px)", () => {
-            if (!pinRef.current || !containerRef.current) return;
+            if (!pinRef.current || !wheelRef.current) return;
 
-            gsap.to(containerRef.current, {
-              rotation: 360,
-              ease: "none",
-              scrollTrigger: {
-                trigger: pinRef.current,
-                pin: true,
-                start: startTrigger,
-                end: `+=${scrollDuration}`,
-                scrub: 1,
-                invalidateOnRefresh: true,
+            gsap.fromTo(
+              wheelRef.current,
+              { rotation: initialRotation },
+              {
+                rotation: initialRotation - 360,
+                ease: "none",
+                scrollTrigger: {
+                  trigger: pinRef.current,
+                  pin: true,
+                  start: startTrigger,
+                  end: `+=${scrollDuration}`,
+                  scrub: 1,
+                  invalidateOnRefresh: true,
+                },
               },
-            });
+            );
           });
 
           mm.add("(max-width: 767px)", () => {
-            if (!pinRef.current || !containerRef.current) return;
+            if (!pinRef.current || !wheelRef.current) return;
 
-            gsap.set(containerRef.current, {
-              rotation: mobileRotationRef.current,
+            mobileRotationRef.current = initialRotation;
+            gsap.set(wheelRef.current, {
+              rotation: initialRotation,
             });
           });
 
@@ -311,7 +339,7 @@ export const RadialScrollGallery = forwardRef<HTMLDivElement, RadialScrollGaller
       },
       {
         scope: pinRef,
-        dependencies: [scrollDuration, currentRadius, startTrigger, childrenCount],
+        dependencies: [scrollDuration, currentRadius, startTrigger, childrenCount, initialRotation],
       },
     );
 
@@ -339,17 +367,16 @@ export const RadialScrollGallery = forwardRef<HTMLDivElement, RadialScrollGaller
           onPointerDown={handleMobilePointerDown}
           onPointerMove={handleMobilePointerMove}
           onPointerUp={endMobileDrag}
-          onPointerCancel={endMobileDrag}
+          onPointerCancel={cancelMobileDrag}
           style={{
             height: `${visibleAreaHeight}px`,
             maskImage: "linear-gradient(to top, transparent 0%, black 40%, black 100%)",
             WebkitMaskImage: "linear-gradient(to top, transparent 0%, black 40%, black 100%)",
           }}
         >
-          <ul
-            ref={containerRef}
+          <div
             className={`
-              absolute left-1/2 m-0 -translate-x-1/2 list-none p-0 will-change-transform
+              absolute left-1/2 m-0 -translate-x-1/2 p-0
               transition-opacity duration-500 ease-out
               touch-pan-y
               ${disabled ? "pointer-events-none opacity-50 grayscale" : ""}
@@ -362,61 +389,63 @@ export const RadialScrollGallery = forwardRef<HTMLDivElement, RadialScrollGaller
               bottom: -(circleDiameter * hiddenDecimal),
             }}
           >
-            {childrenNodes.map((child, index) => {
-              const angle = (index / childrenCount) * 2 * Math.PI;
-              let x = currentRadius * Math.cos(angle);
-              const y = currentRadius * Math.sin(angle);
+            <ul ref={wheelRef} className="relative m-0 h-full w-full list-none p-0 will-change-transform">
+              {childrenNodes.map((child, index) => {
+                const angle = (index / childrenCount) * 2 * Math.PI;
+                let x = currentRadius * Math.cos(angle);
+                const y = currentRadius * Math.sin(angle);
 
-              if (direction === "rtl") {
-                x = -x;
-              }
+                if (direction === "rtl") {
+                  x = -x;
+                }
 
-              const rotationAngle = (angle * 180) / Math.PI;
-              const isHovered = hoveredIndex === index;
-              const isAnyHovered = hoveredIndex !== null;
+                const rotationAngle = (angle * 180) / Math.PI;
+                const isHovered = hoveredIndex === index;
+                const isAnyHovered = hoveredIndex !== null;
 
-              return (
-                <li
-                  key={index}
-                  ref={index === 0 ? childRef : null}
-                  className="absolute left-1/2 top-1/2"
-                  style={{
-                    zIndex: isHovered ? 100 : 10,
-                    transform: `translate(-50%, -50%) translate3d(${x}px, ${y}px, 0) rotate(${
-                      rotationAngle + 90
-                    }deg)`,
-                  }}
-                >
-                  <div
-                    role="button"
-                    tabIndex={disabled ? -1 : 0}
-                    onClick={() => !disabled && handleItemSelect(index)}
-                    onKeyDown={(e) => {
-                      if (disabled) return;
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        onItemSelect?.(index);
-                      }
+                return (
+                  <li
+                    key={index}
+                    ref={index === 0 ? childRef : null}
+                    className="absolute left-1/2 top-1/2"
+                    style={{
+                      zIndex: isHovered ? 100 : 10,
+                      transform: `translate(-50%, -50%) translate3d(${x}px, ${y}px, 0) rotate(${
+                        rotationAngle + 90
+                      }deg)`,
                     }}
-                    onMouseEnter={() => !disabled && setHoveredIndex(index)}
-                    onMouseLeave={() => !disabled && setHoveredIndex(null)}
-                    onFocus={() => !disabled && setHoveredIndex(index)}
-                    onBlur={() => !disabled && setHoveredIndex(null)}
-                    className={`
-                      block cursor-pointer rounded-xl text-left outline-none will-change-transform
-                      touch-pan-y
-                      transition-all duration-500 ease-out
-                      focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
-                      ${isHovered ? "-translate-y-8 scale-125" : "scale-100"}
-                      ${isAnyHovered && !isHovered ? "blur-[2px] grayscale opacity-40" : "blur-0 opacity-100"}
-                    `}
                   >
-                    {child}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+                    <div
+                      role="button"
+                      tabIndex={disabled ? -1 : 0}
+                      onClick={() => !disabled && handleItemSelect(index)}
+                      onKeyDown={(e) => {
+                        if (disabled) return;
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onItemSelect?.(index);
+                        }
+                      }}
+                      onMouseEnter={() => !disabled && setHoveredIndex(index)}
+                      onMouseLeave={() => !disabled && setHoveredIndex(null)}
+                      onFocus={() => !disabled && setHoveredIndex(index)}
+                      onBlur={() => !disabled && setHoveredIndex(null)}
+                      className={`
+                        block cursor-pointer rounded-xl text-left outline-none will-change-transform
+                        touch-pan-y
+                        transition-all duration-500 ease-out
+                        focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2
+                        ${isHovered ? "-translate-y-8 scale-125" : "scale-100"}
+                        ${isAnyHovered && !isHovered ? "blur-[2px] grayscale opacity-40" : "blur-0 opacity-100"}
+                      `}
+                    >
+                      {child}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         </div>
       </div>
     );

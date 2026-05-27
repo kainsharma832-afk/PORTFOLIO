@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { RadialScrollGallery } from "@/components/ui/portfolio-and-image-gallery";
 import { portfolioContent, projects } from "@/content/portfolio";
 import Waves from "@/components/Waves";
+import { PillActionButton } from "@/components/ui/pill-action-button";
 
 type Project = (typeof projects)[number];
 
@@ -27,6 +28,13 @@ const ProjectFourDetail = lazy(() =>
     default: module.ProjectFourDetail,
   }))
 );
+const ResumeDetail = lazy(() =>
+  import("@/components/ResumeDetail").then((module) => ({
+    default: module.ResumeDetail,
+  }))
+);
+
+const resumeUrl = "/resume";
 
 function RouteFallback() {
   return (
@@ -68,6 +76,14 @@ function App() {
   const selectedProject = path.startsWith("/projects/")
     ? projects.find((project) => project.slug === path.replace("/projects/", ""))
     : undefined;
+
+  if (path === "/resume") {
+    return (
+      <Suspense fallback={<RouteFallback />}>
+        <ResumeDetail onBack={() => navigateTo("/")} />
+      </Suspense>
+    );
+  }
 
   if (path.startsWith("/projects/")) {
     if (selectedProject?.slug === "project-1") {
@@ -260,17 +276,26 @@ function App() {
       </section>
 
       <section className="border-t border-border bg-muted/30">
-        <div className="mx-auto grid max-w-7xl gap-8 px-5 py-20 sm:px-8 lg:grid-cols-[1fr_1.2fr]">
-          <div>
+        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-5 py-20 sm:px-8 md:grid-cols-[0.9fr_1.4fr] md:items-start md:gap-20">
+          <div className="flex flex-col items-start">
             <span className="text-xs font-bold uppercase tracking-[0.28em] text-muted-foreground">{portfolioContent.about.eyebrow}</span>
             <h2 className="mt-4 text-3xl font-black tracking-normal sm:text-5xl">{portfolioContent.about.title}</h2>
+            <p className="mt-7 leading-8 text-muted-foreground">{portfolioContent.about.paragraphs[0]}</p>
+            <div className="mt-10 flex items-center justify-start">
+              <PillActionButton
+                href={resumeUrl}
+                icon="↗"
+                onClick={(event) => {
+                  event.preventDefault();
+                  navigateTo(resumeUrl);
+                }}
+              >
+                查看简历 / View Resume
+              </PillActionButton>
+            </div>
           </div>
-          <div className="grid gap-4 text-muted-foreground sm:grid-cols-2">
-            {portfolioContent.about.paragraphs.map((paragraph) => (
-              <p key={paragraph} className="leading-8">
-                {paragraph}
-              </p>
-            ))}
+          <div className="text-muted-foreground">
+            <p className="whitespace-pre-line leading-8">{portfolioContent.about.paragraphs[1]}</p>
           </div>
         </div>
       </section>
